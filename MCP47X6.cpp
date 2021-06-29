@@ -108,21 +108,27 @@ bool MCP47X6::saveSettings(void) {
  * For the MCP4706 only 256 steps are used. The four LSBs are not used.
  * (i.e. value & 0xFF0)
  */
-bool MCP47X6::setOutputLevel(uint16_t level) {
+uint8_t MCP47X6::setOutputLevel(uint16_t level) {
   Wire.beginTransmission(devAddr);
-  Wire.write((config | MCP47X6_CMD_VOLALL) & MCP47X6_PWRDN_MASK);
+  /*Wire.write((config | MCP47X6_CMD_VOLALL) & MCP47X6_PWRDN_MASK);
   Wire.write((uint8_t) ((level>>4) & 0xFF));
-  Wire.write((uint8_t) ((level<<4) & 0xF0));
-  return (Wire.endTransmission() == 0);
+  Wire.write((uint8_t) ((level<<4) & 0xF0));*/
+  //return (Wire.endTransmission() == 0);
+  Wire.write(0b01111000);
+  Wire.write(0xff);
+  Wire.write(0xff);
+  Wire.endTransmission();
+  return ((config | MCP47X6_CMD_VOLALL) & MCP47X6_PWRDN_MASK);
 }
 
 // Special case for 8-bit device (MCP4706) - saves one byte of transfer
 // and is therefore faster
-bool MCP47X6::setOutputLevel(uint8_t level) {
+uint8_t MCP47X6::setOutputLevel(uint8_t level) {
   Wire.beginTransmission(devAddr);
   Wire.write((uint8_t) MCP47X6_CMD_VOLDAC);
   Wire.write(level);
-  return (Wire.endTransmission() == 0);
+  //return (Wire.endTransmission() == 0);
+  return (uint8_t) MCP47X6_CMD_VOLDAC;
 }
 
 

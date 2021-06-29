@@ -49,22 +49,22 @@
  */
 
 // Programmable Gain definitions
-#define MCP47X6_GAIN_MASK	0xFE
-#define MCP47X6_GAIN_1X	0x00
-#define MCP47X6_GAIN_2X	0x01
+#define MCP47X6_GAIN_MASK	0xFE //1111 1110
+#define MCP47X6_GAIN_1X	    0x00 //0000 0000
+#define MCP47X6_GAIN_2X	    0x01 //0000 0001
 
 // Power Down Mode definitions
-#define MCP47X6_PWRDN_MASK     0xF9
-#define MCP47X6_AWAKE          0x00
-#define MCP47X6_PWRDN_1K       0x02
-#define MCP47X6_PWRDN_100K     0x04
-#define MCP47X6_PWRDN_500K     0x06
+#define MCP47X6_PWRDN_MASK     0xF9 //1111 1001
+#define MCP47X6_AWAKE          0x00 //0000 0000
+#define MCP47X6_PWRDN_1K       0x02 //0000 0010
+#define MCP47X6_PWRDN_100K     0x04 //0000 0100
+#define MCP47X6_PWRDN_500K     0x06 //0000 0110
 
 // Reference Voltage definitions
-#define MCP47X6_VREF_MASK             0xE7
-#define MCP47X6_VREF_VDD              0x00
-#define MCP47X6_VREF_VREFPIN	      0x10
-#define MCP47X6_VREF_VREFPIN_BUFFERED 0x18
+#define MCP47X6_VREF_MASK             0xE7 //1110 0111
+#define MCP47X6_VREF_VDD              0x00 //0000 0000
+#define MCP47X6_VREF_VREFPIN	      0x10 //0001 0000
+#define MCP47X6_VREF_VREFPIN_BUFFERED 0x18 //0001 1000
 
 // Command definitioins
 #define MCP47X6_CMD_MASK       0x1F
@@ -90,8 +90,8 @@ class MCP47X6 {
         bool saveSettings(void);
 
         // Set the DAC
-        bool setOutputLevel(uint8_t level);
-        bool setOutputLevel(uint16_t level);
+        uint8_t setOutputLevel(uint8_t level);
+        uint8_t setOutputLevel(uint16_t level);
 
 	   // Power Down
 	   // NOTE: writing any settings or DAC value
