@@ -44,65 +44,94 @@
 //  commonly 0x60
 #define MCP47X6_DEFAULT_ADDRESS	0x60
 
-/** Config Data Defn
- * Config = 0bCCCVVPPG
- */
-
-// Programmable Gain definitions
-#define MCP47X6_GAIN_MASK	0xFE //1111 1110
-#define MCP47X6_GAIN_1X	    0x00 //0000 0000
-#define MCP47X6_GAIN_2X	    0x01 //0000 0001
-
-// Power Down Mode definitions
-#define MCP47X6_PWRDN_MASK     0xF9 //1111 1001
-#define MCP47X6_AWAKE          0x00 //0000 0000
-#define MCP47X6_PWRDN_1K       0x02 //0000 0010
-#define MCP47X6_PWRDN_100K     0x04 //0000 0100
-#define MCP47X6_PWRDN_500K     0x06 //0000 0110
-
-// Reference Voltage definitions
-#define MCP47X6_VREF_MASK             0xE7 //1110 0111
-#define MCP47X6_VREF_VDD              0x00 //0000 0000
-#define MCP47X6_VREF_VREFPIN	      0x10 //0001 0000
-#define MCP47X6_VREF_VREFPIN_BUFFERED 0x18 //0001 1000
-
-// Command definitioins
-#define MCP47X6_CMD_MASK       0x1F
-#define MCP47X6_CMD_VOLDAC     0x00
-#define MCP47X6_CMD_VOLALL     0x40
-#define MCP47X6_CMD_VOLCONFIG  0x80
-#define MCP47X6_CMD_ALL        0x60
-
-
 class MCP47X6 {
-    public:
-        MCP47X6();
-        MCP47X6(uint8_t address);
-        
-        bool testConnection(void);
 
-	   bool begin(void);
-	   bool begin(uint8_t config);
+    public:
+
+        enum VREF : uint8_t {
+            VDD_UNBUFFERED = 0,
+            VREF_UNBUFFERED = 1,
+            VREF_BUFFERED = 2
+        };
+
+        enum GAIN : uint8_t {
+            X1 = 0,
+            X2 = 1
+        };
+
+        enum POWER_DOWN : uint8_t {
+            NOT_POWERED_NORMAL_OPERATION = 0,
+            POWER_DOWN_1k_RESISTOR = 1,
+            POWER_DOWN_100k_RESISTOR = 2,
+            POWER_DOWN_500k_RESISTOR = 3
+        };
+
+        enum MEMORY_WRITE : uint8_t {
+            WRITE_VOLATILE_DAC_REGISTER = 0,
+            WRITE_VOLATILE_COMMAND = 1,
+            WRITE_ALL_MEMORY = 2,
+            WRITE_VOLATILE_CONFIGURATION_BITS = 3
+        };
+
+    public:
+    
+        MCP47X6(uint8_t address, MCP47X6::VREF vref, MCP47X6::GAIN gain, MCP47X6::POWER_DOWN power_down,  MCP47X6::MEMORY_WRITE memory_write, uint16_t level);
+        
+        bool init( void );
 
         // Set the configuration bits for the DAC
-        void setGain(uint8_t gain);
-        void setVReference(uint8_t ref);
-        bool saveSettings(void);
+        void setGain(GAIN gain);
+        void setVReference(VREF vref);
+        void setPower(POWER_DOWN power_down);
 
         // Set the DAC
-        uint8_t setOutputLevel(uint8_t level);
-        uint8_t setOutputLevel(uint16_t level);
+        uint8_t setOutputLevelVolatileFast(uint8_t level);
+        uint8_t setOutputLevelVolatileFast(uint16_t level);
 
-	   // Power Down
-	   // NOTE: writing any settings or DAC value
-	   // will awaken device
-        bool powerDown(uint8_t pdOutR);
-        bool powerDown(void);
+        bool downloadParameters (MEMORY_WRITE memory);
+
 
     private:
-        bool writeConfigReg(uint8_t theConfig);
-        uint8_t devAddr;
-        uint8_t config;
+
+        bool writeCommand (MEMORY_WRITE memory);
+
+        void saveVref(VREF vref);
+        void saveGain(GAIN gain);
+        void savePower(POWER_DOWN power_down);
+        void saveMemory(MEMORY_WRITE memory);
+
+        uint8_t address_;
+
+        VREF vref_;
+        GAIN gain_;
+        POWER_DOWN power_down_;
+        MEMORY_WRITE memory_write_;
+
+        union VoltageLevel {
+            uint16_t data;  
+            struct {
+                uint8_t lower_byte;
+                uint8_t upper_byte;
+            };
+        };
+
+        VoltageLevel voltage_level_;
+
+        union CommandByte {
+            uint8_t data;  
+            struct {
+                uint8_t G     : 1;  
+                uint8_t PD0   : 1;
+                uint8_t PD1   : 1;
+                uint8_t VREF0 : 1;
+                uint8_t VREF1 : 1;
+                uint8_t C0    : 1;
+                uint8_t C1    : 1;
+                uint8_t C2    : 1;
+            };
+        };
+
+        CommandByte command_byte_;
 };
 
 #endif /* _MCP47X6_H_ */

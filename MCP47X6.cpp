@@ -30,74 +30,60 @@
 /**************************************************************************/
 
 /******************************************
- * Default constructor, uses default I2C address.
- * @see MCP47X6_DEFAULT_ADDRESS
- */
-MCP47X6::MCP47X6() {
-    devAddr = MCP47X6_DEFAULT_ADDRESS;
-}
-
-/******************************************
  * Specific address constructor.
  * @param address I2C address
  * @see MCP47X6_DEFAULT_ADDRESS
  */
-MCP47X6::MCP47X6(uint8_t address) {
-    devAddr = address;
+MCP47X6::MCP47X6(uint8_t address, 
+                MCP47X6::VREF vref, MCP47X6::GAIN gain, 
+                MCP47X6::POWER_DOWN power_down,
+                MCP47X6::MEMORY_WRITE memory_write,
+                uint16_t level) :
+  address_(address),
+  vref_(vref),
+  gain_(gain),
+  power_down_(power_down),
+  memory_write_(memory_write)
+{
+    saveGain(gain_);
+    saveVref(vref_);
+    savePower(power_down_);
+
+    voltage_level_.data = level;
+
 }
 
-/******************************************
- * Verify the I2C connection.
- * Make sure the device is connected and responds as expected.
- * @return true if connection is valid, false otherwise
- */
-bool MCP47X6::testConnection(void) {
-    Wire.beginTransmission(devAddr);
-    return (Wire.endTransmission() == 0);
-}
-
-/******************************************
- * Power on and prepare for general usage.
- * This device recalls the previously saved state at power up. The begin()
- * function reads these values from the DAC and uses them to reinitialize
- * the driver since a reset of the microcontroller
- * did not necessarily restart the device.
- */
-bool MCP47X6::begin() {
-  // read the settings from DAC EEPROM
-
-  // reinitialize the device from the read settings
-  return writeConfigReg(config);
-}
-
-bool MCP47X6::begin(uint8_t newConfig) {
-  // initialize the device from the new settings
-  config = newConfig;
-  return true;
+bool MCP47X6::init(void) {
+  return writeCommand(memory_write_);
 }
 
 /******************************************
  * Set the configuration bits for the DAC
  */
-void MCP47X6::setGain(uint8_t gain) {
-  config = (config & MCP47X6_GAIN_MASK) | (gain & !MCP47X6_GAIN_MASK);
+void MCP47X6::setGain(GAIN gain) {
+  
+  gain_ = gain;
+
+  saveGain(gain_);
+
 }
 
-void MCP47X6::setVReference(uint8_t vref) {
-  config = (config & MCP47X6_VREF_MASK) | (vref & !MCP47X6_VREF_MASK);
+void MCP47X6::setVReference(VREF vref) {
+
+  vref_ = vref;
+
+  saveVref(vref_);
+
 }
 
-//void MCP47X6::setPwrDnOutRes(uint8_t pdOutR) {
-//  config = (config & MCP47X6_PWRDN_MASK) | (pdOutR & !MCP47X6_PWRDN_MASK);
-//}
+void MCP47X6::setPower(POWER_DOWN power_down) {
 
-/******************************************
- * Saves current DAC settings into DAC EEPROM for use at power up
- */
-bool MCP47X6::saveSettings(void) {
-  // read the current volatile settings
-  // write the values back to DAC EEPROM
+  power_down_ = power_down;
+
+  savePower(power_down_);
+
 }
+
 
 /******************************************
  * Set DAC output level value
@@ -108,49 +94,162 @@ bool MCP47X6::saveSettings(void) {
  * For the MCP4706 only 256 steps are used. The four LSBs are not used.
  * (i.e. value & 0xFF0)
  */
-uint8_t MCP47X6::setOutputLevel(uint16_t level) {
-  Wire.beginTransmission(devAddr);
-  /*Wire.write((config | MCP47X6_CMD_VOLALL) & MCP47X6_PWRDN_MASK);
-  Wire.write((uint8_t) ((level>>4) & 0xFF));
-  Wire.write((uint8_t) ((level<<4) & 0xF0));*/
-  //return (Wire.endTransmission() == 0);
-  Wire.write(0b01111000);
+uint8_t MCP47X6::setOutputLevelVolatileFast(uint16_t level) {
+
+  /*Wire.beginTransmission(address_);
+  Wire.write(command_byte_.data);
   Wire.write(0xff);
   Wire.write(0xff);
-  Wire.endTransmission();
-  return ((config | MCP47X6_CMD_VOLALL) & MCP47X6_PWRDN_MASK);
+  Wire.endTransmission();*/
+  return (command_byte_.data);
+
 }
 
 // Special case for 8-bit device (MCP4706) - saves one byte of transfer
 // and is therefore faster
-uint8_t MCP47X6::setOutputLevel(uint8_t level) {
-  Wire.beginTransmission(devAddr);
-  Wire.write((uint8_t) MCP47X6_CMD_VOLDAC);
-  Wire.write(level);
-  //return (Wire.endTransmission() == 0);
-  return (uint8_t) MCP47X6_CMD_VOLDAC;
+uint8_t MCP47X6::setOutputLevelVolatileFast(uint8_t level) {
+  return (command_byte_.data);
 }
 
 
-/******************************************
- * Put the DAC into a low power state
- * NOTE: writing any settings or DAC output level value
- * returns the DAC to the awake power state.
- */
-bool MCP47X6::powerDown() {
-  return writeConfigReg(config);
+
+bool MCP47X6::downloadParameters (MEMORY_WRITE memory) {
+
+  return writeCommand(memory);
+
 }
 
-bool MCP47X6::powerDown(uint8_t pdOutR) {
-  config = (config & MCP47X6_PWRDN_MASK) | (pdOutR & !MCP47X6_PWRDN_MASK);
-  return writeConfigReg(config);
-}
 
-/******************************************
- * Private helper function to write just the config register
- */
-bool MCP47X6::writeConfigReg(uint8_t theConfig) {
-  Wire.beginTransmission(devAddr);
-  Wire.write(theConfig | MCP47X6_CMD_VOLCONFIG);
+bool MCP47X6::writeCommand (MEMORY_WRITE memory) {
+
+  //memory_write_ = memory;
+  
+  saveMemory(memory);
+  
+  Wire.beginTransmission(address_);
+  Wire.write(command_byte_.data);
+  Wire.write(voltage_level_.upper_byte);
+  Wire.write(voltage_level_.lower_byte);
+  
   return (Wire.endTransmission() == 0);
+
+}
+
+void MCP47X6::saveVref(VREF vref)
+{
+  switch (vref)
+  {
+    case VREF::VDD_UNBUFFERED:
+      
+      command_byte_.VREF1 = 0;
+      command_byte_.VREF0 = 0;
+      
+      break;
+      
+      case VREF::VREF_UNBUFFERED:
+      
+        command_byte_.VREF1 = 1;
+        command_byte_.VREF0 = 0;
+
+      break;
+      
+      case VREF::VREF_BUFFERED:
+      
+        command_byte_.VREF1 = 1;
+        command_byte_.VREF0 = 1;
+      
+      break;
+  }
+
+}
+
+void MCP47X6::saveGain(GAIN gain)
+{
+  switch (gain)
+  {
+    case GAIN::X1:
+      
+      command_byte_.G = 0;
+
+      break;
+      
+      case GAIN::X2:
+      
+        command_byte_.G = 1;
+
+      break;   
+  }
+}
+
+void MCP47X6::saveMemory(MEMORY_WRITE memory)
+{
+
+  switch (memory)
+  {
+    case MEMORY_WRITE::WRITE_VOLATILE_DAC_REGISTER:
+      
+        command_byte_.C2 = 0;
+        command_byte_.C1 = 0;
+        command_byte_.C0 = 0;
+
+      break;
+      
+      case MEMORY_WRITE::WRITE_VOLATILE_COMMAND:
+      
+        command_byte_.C2 = 0;
+        command_byte_.C1 = 1;
+        command_byte_.C0 = 0;
+
+      break;   
+            
+      case MEMORY_WRITE::WRITE_ALL_MEMORY:
+      
+        command_byte_.C2 = 0;
+        command_byte_.C1 = 1;
+        command_byte_.C0 = 1;
+
+      break;   
+
+      case MEMORY_WRITE::WRITE_VOLATILE_CONFIGURATION_BITS:
+      
+        command_byte_.C2 = 1;
+        command_byte_.C1 = 0;
+        command_byte_.C0 = 0;
+
+      break;   
+  }
+}
+
+void MCP47X6::savePower(POWER_DOWN power)
+{
+  switch (power)
+  {
+    case POWER_DOWN::NOT_POWERED_NORMAL_OPERATION:
+      
+        command_byte_.PD1 = 0;
+        command_byte_.PD0 = 0;
+
+      break;
+      
+      case POWER_DOWN::POWER_DOWN_1k_RESISTOR:
+      
+        command_byte_.PD1 = 0;
+        command_byte_.PD0 = 1;
+
+      break;   
+            
+      case POWER_DOWN::POWER_DOWN_100k_RESISTOR:
+      
+        command_byte_.PD1 = 1;
+        command_byte_.PD0 = 0;
+
+      break;   
+
+      case POWER_DOWN::POWER_DOWN_500k_RESISTOR:
+      
+        command_byte_.PD1 = 1;
+        command_byte_.PD0 = 1;
+
+      break;   
+  }
 }
