@@ -101,7 +101,7 @@ uint8_t MCP47X6::setOutputLevelVolatileFast(uint16_t level) {
   Wire.write(0xff);
   Wire.write(0xff);
   Wire.endTransmission();*/
-  return (command_byte_.data);
+  return (voltage_level_.lower_byte);
 
 }
 
@@ -115,17 +115,17 @@ uint8_t MCP47X6::setOutputLevelVolatileFast(uint8_t level) {
 
 bool MCP47X6::downloadParameters (MEMORY_WRITE memory) {
 
-  return writeCommand(memory);
+  memory_write_ = memory;
+
+  return writeCommand(memory_write_);
 
 }
 
 
 bool MCP47X6::writeCommand (MEMORY_WRITE memory) {
 
-  //memory_write_ = memory;
-  
   saveMemory(memory);
-  
+
   Wire.beginTransmission(address_);
   Wire.write(command_byte_.data);
   Wire.write(voltage_level_.upper_byte);
