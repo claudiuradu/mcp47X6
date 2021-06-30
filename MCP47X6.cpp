@@ -45,6 +45,7 @@ MCP47X6::MCP47X6(uint8_t address,
   power_down_(power_down),
   memory_write_(memory_write)
 {
+  
     saveGain(gain_);
     saveVref(vref_);
     savePower(power_down_);
@@ -94,21 +95,31 @@ void MCP47X6::setPower(POWER_DOWN power_down) {
  * For the MCP4706 only 256 steps are used. The four LSBs are not used.
  * (i.e. value & 0xFF0)
  */
-uint8_t MCP47X6::setOutputLevelVolatileFast(uint16_t level) {
+bool MCP47X6::setOutputLevelVolatileFast(uint16_t level) {
 
-  /*Wire.beginTransmission(address_);
-  Wire.write(command_byte_.data);
-  Wire.write(0xff);
-  Wire.write(0xff);
-  Wire.endTransmission();*/
-  return (voltage_level_.lower_byte);
+  voltage_level_.data = level;
+  
+  VoltageLevel voltage_level;
+  
+  voltage_level.data = voltage_level_.data;
+
+  voltage_level.data = (voltage_level.data & 0x3FFF) << 2;
+
+  Wire.beginTransmission(address_);
+  
+  Wire.write(voltage_level.upper_byte);
+  Wire.write(voltage_level.lower_byte);
+
+  return (Wire.endTransmission() == 0);
 
 }
 
 // Special case for 8-bit device (MCP4706) - saves one byte of transfer
 // and is therefore faster
-uint8_t MCP47X6::setOutputLevelVolatileFast(uint8_t level) {
-  return (command_byte_.data);
+bool MCP47X6::setOutputLevelVolatileFast(uint8_t level) {
+
+  return (Wire.endTransmission() == 0);
+
 }
 
 
@@ -127,9 +138,10 @@ bool MCP47X6::writeCommand (MEMORY_WRITE memory) {
   saveMemory(memory);
 
   Wire.beginTransmission(address_);
+  
   Wire.write(command_byte_.data);
-  Wire.write(voltage_level_.upper_byte);
-  Wire.write(voltage_level_.lower_byte);
+  Wire.write(voltage_level_.upper_byte<<6);
+  Wire.write(voltage_level_.lower_byte<<6);
   
   return (Wire.endTransmission() == 0);
 
@@ -171,13 +183,13 @@ void MCP47X6::saveGain(GAIN gain)
       
       command_byte_.G = 0;
 
-      break;
+    break;
       
-      case GAIN::X2:
+    case GAIN::X2:
       
-        command_byte_.G = 1;
+      command_byte_.G = 1;
 
-      break;   
+    break;   
   }
 }
 

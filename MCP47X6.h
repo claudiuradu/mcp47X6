@@ -85,8 +85,8 @@ class MCP47X6 {
         void setPower(POWER_DOWN power_down);
 
         // Set the DAC
-        uint8_t setOutputLevelVolatileFast(uint8_t level);
-        uint8_t setOutputLevelVolatileFast(uint16_t level);
+        bool setOutputLevelVolatileFast(uint8_t level);
+        bool setOutputLevelVolatileFast(uint16_t level);
 
         bool downloadParameters (MEMORY_WRITE memory);
 
