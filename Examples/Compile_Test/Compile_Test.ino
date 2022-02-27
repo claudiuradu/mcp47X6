@@ -8,7 +8,7 @@ MCP47X6 theDAC=MCP47X6(MCP47X6_DEFAULT_ADDRESS);
 void setup() {
   theDAC.testConnection();
   theDAC.begin();
-  theDAC.begin(MCP47X6_VREF_VREFPIN & MCP47X6_GAIN_2X);
+  theDAC.begin(MCP47X6_VREF_VREFPIN | MCP47X6_GAIN_2X);
   theDAC.setVReference(MCP47X6_VREF_VDD);
   theDAC.setGain(MCP47X6_GAIN_1X);
   theDAC.saveSettings();
